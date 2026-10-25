@@ -26,11 +26,14 @@ Other extensions read the status through `TailscaleApi` (`api.ts`), `host.want(T
 
 ## On your phone's home screen
 
-The web UI installs as a standalone app (`web/public/manifest.webmanifest`, the meta tags in `web/index.html`; no
-service worker). On an iPhone in the same tailnet: scan the popover's QR code, open it in Safari, then Share → Add to
+The web UI installs as a standalone app (the manifest template in `web/public/manifest.webmanifest`, the meta tags in
+`web/index.html`; no service worker). The server names the app `<project folder> · Ultimate`, with the folder name
+alone as its short name and iOS title. On Android, open the project's URL in Firefox and choose Add to Home screen.
+On an iPhone in the same tailnet: scan the popover's QR code, open it in Safari, then Share → Add to
 Home Screen with Open as Web App on. It opens without Safari's bars, edge to edge under the status bar. Identity comes
 from Serve's headers, not cookies or redirects, so nothing sends the app back out to Safari. The icon keeps the URL
-with its port: should the registry hand this project another port, add it again.
+with its port: should the registry hand this project another port, add it again. Tailscale must be connected on the
+phone. Existing icons may keep their old name; remove and re-add them to pick up the project-specific label.
 
 ## Stable ports, handoff, and recovery
 

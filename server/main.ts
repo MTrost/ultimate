@@ -18,6 +18,7 @@ import { alive } from './lock.ts'
 import { homedir } from 'node:os'
 import { realpath } from 'node:fs/promises'
 import { extensionModules } from './vite-extensions.ts'
+import { installMetadata } from './vite-install.ts'
 import { admit, createAccess } from './request-security.ts'
 import { writeProject } from './project.ts'
 import { reportCore } from './supervisor-protocol.ts'
@@ -118,6 +119,7 @@ export async function prepareServer(options: Partial<ServerOptions> = {}) {
     cacheDir: resolvePath(host.home, 'vite'),
     resolve: { alias: { '@': resolvePath(ultimateRoot, 'web/src') } },
     plugins: [
+      installMetadata(ultimateRoot, projectRoot),
       extensionModules(ultimateRoot, projectRoot, host.userHome),
       {
         name: 'ultimate:watchers',
