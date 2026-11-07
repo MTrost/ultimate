@@ -1,6 +1,11 @@
 Look at Ultimate's UI and drive fresh headless Chromium pages with `screenshot` and `browser`. After UI changes, inspect the returned image rather than assuming the page renders.
 
-Install Chromium separately; playwright-core does not download browsers. Resolution checks `ULTIMATE_CHROMIUM`, `/usr/bin/chromium`, `/usr/bin/google-chrome-stable`, then `~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome`. A browser is launched lazily and closed when the host shuts down. Each call has its own isolated context, closed on completion or cancellation.
+Install Chromium separately; playwright-core does not download browsers. Resolution checks `ULTIMATE_CHROMIUM` first, then only the current platform's paths:
+
+- macOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, then `~/Library/Caches/ms-playwright/chromium-*/{chrome-mac-arm64,chrome-mac-x64,chrome-mac}/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`.
+- Linux: `/usr/bin/chromium`, `/usr/bin/google-chrome-stable`, then `~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome`.
+
+Candidates must be regular files with execute permission, so directories and non-executable files never reach Playwright's launch timeout. An unusable `ULTIMATE_CHROMIUM` file fails immediately with its path and reason; unusable automatic candidates are skipped and reported if no executable is found. The missing-browser error lists only the current platform's install paths. A browser is launched lazily and closed when the host shuts down. Each call has its own isolated context, closed on completion or cancellation.
 
 No call can hang: loading, each step (including `eval`, which Playwright never times out) and the capture each time out after 30 s (`timeoutMs` overrides it), and a whole call after four such limits plus its explicit waits. A timed-out step fails the call with a `TimeoutError` on its `Step n:` line. Closing a context is bounded too; a context that will not close (a wedged renderer) closes the shared browser, so the next call launches a fresh one.
 

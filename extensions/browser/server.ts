@@ -1,5 +1,6 @@
-import { access, mkdir, readdir } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { constants } from 'node:fs'
+import { access, mkdir, readdir, stat } from 'node:fs/promises'
+import { homedir, platform } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { Type } from '@earendil-works/pi-ai'
@@ -9,27 +10,49 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import type { ExtensionHost } from '../../server/extensions.ts'
 
 export async function browserBinary() {
-  const cache = join(homedir(), '.cache/ms-playwright')
+  const mac = platform() === 'darwin'
+  const cache = join(homedir(), mac ? 'Library/Caches/ms-playwright' : '.cache/ms-playwright')
+  const installed = mac
+    ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+    : ['/usr/bin/chromium', '/usr/bin/google-chrome-stable']
+  const binaries = mac
+    ? ['chrome-mac-arm64', 'chrome-mac-x64', 'chrome-mac'].map(
+        (directory) =>
+          `${directory}/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`,
+      )
+    : ['chrome-linux64/chrome']
   const candidates = [
     process.env.ULTIMATE_CHROMIUM,
-    '/usr/bin/chromium',
-    '/usr/bin/google-chrome-stable',
+    ...installed,
     ...(await readdir(cache).catch(() => []))
       .filter((name) => name.startsWith('chromium-'))
       .toSorted()
       .toReversed()
-      .map((name) => join(cache, name, 'chrome-linux64/chrome')),
+      .flatMap((name) => binaries.map((binary) => join(cache, name, binary))),
   ].filter((path): path is string => !!path)
+  const rejected: string[] = []
   for (const path of candidates) {
     try {
-      await access(path)
+      if (!(await stat(path)).isFile()) throw new Error('not a regular file')
+      await access(path, constants.X_OK)
       return path
-    } catch {
-      /* try the next installed browser */
+    } catch (error) {
+      // Missing candidates are normal; report installed but unusable ones rather than launching them.
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        const reason = `Chromium is not executable at ${path}: ${String(error)}`
+        if (path === process.env.ULTIMATE_CHROMIUM) throw new Error(reason, { cause: error })
+        rejected.push(reason)
+      }
     }
   }
   throw new Error(
-    'No Chromium found. Set ULTIMATE_CHROMIUM or install /usr/bin/chromium, /usr/bin/google-chrome-stable, or ~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome.',
+    [
+      `No Chromium found. Set ULTIMATE_CHROMIUM or install ${[
+        ...installed,
+        ...binaries.map((binary) => join(cache, 'chromium-*', binary)),
+      ].join(', ')}.`,
+      ...rejected,
+    ].join('\n'),
   )
 }
 
